@@ -1,0 +1,524 @@
+---
+title: "6303: Final Project"
+author: "Varun Sai Thota 1002140673, Ramyasai Donkeshwaram 1002164699"
+date: "2024-05-08"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+# Loading required libraries
+```{r}
+library(dplyr)
+library(caret)
+library(ggplot2)
+library(reshape2)
+library(rpart.plot)
+library(pROC)
+```
+
+# Load and view the recruitment dataset.
+```{r}
+recruitmentdataset <- read.csv("recruitmentdataset.csv")
+View(recruitmentdataset)
+```
+
+# Display the first 5 rows of the recruitment dataset.
+```{r}
+head(recruitmentdataset, n = 5)
+```
+# Display the last 5 rows of the recruitment dataset.
+```{r}
+tail(recruitmentdataset, n = 5)
+```
+
+# Remove the 'Id' column from the dataset and display the first 5 rows of the updated dataset.
+```{r}
+recruitmentdataset$Id <- NULL
+head(recruitmentdataset, n = 5)
+```
+
+# Display the dimensions of the dataset, remove duplicate rows, and display the new dimensions of the updated dataset.
+```{r}
+dim(recruitmentdataset)
+recruitmentdataset <- unique(recruitmentdataset)
+dim(recruitmentdataset)
+```
+
+```{r}
+# Total Null values
+total_nulls <- sum(is.na(recruitmentdataset))
+print(total_nulls)
+```
+
+```{r}
+# Summary of data
+summary(recruitmentdataset)
+```
+
+# Checking data types 
+```{r}
+# Use str() function to display the structure of the dataset
+str(recruitmentdataset)
+```
+
+```{r}
+sapply(recruitmentdataset, class)
+```
+# Extract the names of all numeric columns in the recruitment dataset.
+```{r}
+numeric_cols <- recruitmentdataset[, sapply(recruitmentdataset, is.numeric)]
+numeric_cols_names <- colnames(numeric_cols)
+numeric_cols_names
+```
+
+# Outliers 
+
+```{r}
+# Visualizing class differences for numerical features
+
+for (feature in numeric_cols_names) {
+  p <- ggplot(recruitmentdataset, aes(y = !!sym(feature))) +
+    geom_boxplot(fill = "steelblue", color = "black") +
+    labs(title = paste("Box plot for", feature)) +
+    theme_minimal() 
+  print(p)
+}
+```
+
+# Display the first rows of numeric columns using dplyr.
+```{r}
+library(dplyr)
+head(select_if(recruitmentdataset, is.numeric))
+
+```
+# Get and display the names of numeric columns in the dataset.
+```{r}
+numeric_cols <- recruitmentdataset[, sapply(recruitmentdataset, is.numeric)]
+numeric_cols_names <- colnames(numeric_cols)
+numeric_cols_names
+```
+
+# Plot 1 ------ box plot for each numerical column against decision
+
+```{r}
+# Visualizing class differences for numerical features
+
+for (feature in numeric_cols_names) {
+  p <- ggplot(recruitmentdataset, aes(x = decision, y = !!sym(feature))) +
+    geom_boxplot(fill = "steelblue", color = "black") +
+    labs(title = paste("decision Vs", feature),
+         x = "decision",
+         y = feature) +
+    theme_minimal() 
+  print(p)
+}
+```
+
+# Plot 2 --- Box plot for numerical columns
+```{r}
+# Visualizing class differences for numerical features
+
+for (feature in numeric_cols_names) {
+  p <- ggplot(recruitmentdataset, aes(y = !!sym(feature))) +
+    geom_boxplot(fill = "steelblue", color = "black") +
+    labs(title = paste("Box plot for", feature)) +
+    theme_minimal() 
+  print(p)
+}
+```
+
+# Plot 3 --- Correlation Plot 
+
+```{r}
+library(reshape2)
+# Select numerical variables for the correlation matrix
+numeric_cols <- recruitmentdataset[, sapply(recruitmentdataset, is.numeric)]
+numeric_cols_names <- colnames(numeric_cols)
+numeric_cols_names
+
+# Creating the correlation matrix
+corr_matrix <- cor(numeric_cols)
+# Converting the correlation matrix into a data frame
+corr_dataframe <- melt(corr_matrix)
+
+# Creating heatmap
+ggplot(corr_dataframe, aes(Var2, Var1, fill = abs(value), label = round(value, 2))) +
+  geom_tile(color = "white") +
+  geom_text(size = 3, color = "black") +  # Ajouter les valeurs de corrélation
+  scale_fill_gradientn(colors = c("white","steelblue", "blue"), name="Correlation") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 10, hjust = 1)) +
+  coord_fixed() +
+  labs(x = "", y = "") +
+  theme(legend.position = "right")
+```
+
+```{r}
+head(recruitmentdataset)
+```
+
+# Plot 4 ---- Violin plot for income and age
+
+```{r}
+library(ggplot2)
+# Most basic violin chart
+p <- ggplot(recruitmentdataset, aes(x=decision, y=age, fill=decision)) + # fill=name allow to automatically dedicate a color for each group
+  geom_violin()
+p
+```
+
+# Plot 5 ---- Bar Chart - Programming Experience by Recruitment Decision
+
+```{r}
+library(ggplot2)
+# Convert 'decision' to a factor
+recruitmentdataset$decision <- as.factor(recruitmentdataset$decision)
+# Ensure levels of decision match True/False
+levels(recruitmentdataset$decision) <- c("False", "True")
+# Bar chart for Programming Experience by Decision
+ggplot(recruitmentdataset, aes(x = ind.programming_exp, fill = decision)) +
+  geom_bar(position = "dodge") +
+  ggtitle("Programming Experience by Recruitment Decision") +
+  xlab("Programming Experience (Years)") +
+  ylab("Count of Candidates") +
+  theme_minimal() +
+  scale_fill_manual(values = c("False" = "red", "True" = "blue"), 
+                    name = "Decision",
+                    labels = c("Not Hired", "Hired"))
+
+
+```
+
+# Plot 6 ---- Bar Chart - Degree Levels by Recruitment Decision
+```{r}
+library(ggplot2)
+# Convert 'decision' to a factor
+recruitmentdataset$decision <- as.factor(recruitmentdataset$decision)
+# Ensure levels of decision match True/False
+levels(recruitmentdataset$decision) <- c("False", "True")
+# Degree vs Decision
+ggplot(recruitmentdataset, aes(x = ind.degree , fill = decision)) +
+  geom_bar(position = "dodge") +
+  ggtitle("Degree Levels by Recruitment Decision") +
+  xlab("Degree Type") +
+  ylab("Count of Candidates") +
+  theme_minimal() +
+  scale_fill_manual(values = c("False" = "red", "True" = "blue"), 
+                    name = "Decision",
+                    labels = c("Not Hired", "Hired"))
+```
+
+# Decision trees(Gini index and Gain ratio)
+
+```{r}
+# Load necessary libraries
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(ROCR)
+library(ggplot2)
+# Data Partitioning for Gini Index
+set.seed(4699)
+trainIndex <- createDataPartition(recruitmentdataset$decision, p = 0.80, list = FALSE)
+train.data1 <- recruitmentdataset[trainIndex, ]
+test.data1 <- recruitmentdataset[-trainIndex, ]
+cat("Training Data Dimensions (Gini):", dim(train.data1), "\n")
+cat("Testing Data Dimensions (Gini):", dim(test.data1), "\n")
+
+# Decision Tree using Gini Index
+tree_gini <- rpart(decision ~ ., data = train.data1, method = "class", parms = list(split = "gini"))
+
+# Plot Decision Tree with Gini Index
+rpart.plot(tree_gini, main = "Decision Tree (Gini Index)", type = 4, extra = 101)
+
+# Data Partitioning for Gain Ratio
+set.seed(673)
+trainIndex <- createDataPartition(recruitmentdataset$decision, p = 0.80, list = FALSE)
+train.data2 <- recruitmentdataset[trainIndex, ]
+test.data2 <- recruitmentdataset[-trainIndex, ]
+cat("Training Data Dimensions (Gain Ratio):", dim(train.data2), "\n")
+cat("Testing Data Dimensions (Gain Ratio):", dim(test.data2), "\n")
+
+# Decision Tree using Gain Ratio
+tree_gain_ratio <- rpart(decision ~ ., data = train.data2, method = "class", parms = list(split = "information"))
+
+# Plot Decision Tree with Gain Ratio
+rpart.plot(tree_gain_ratio, main = "Decision Tree (Gain Ratio)", type = 4, extra = 101)
+
+# Cross-Validation Control
+trctrl <- trainControl(method = "cv", classProbs = TRUE)
+
+# Fit Decision Tree Classification Model (Gini Index)
+DTModel_gini <- train(decision ~ ., data = train.data1, method = "rpart", metric = "ROC", parms = list(split = "gini"), trControl = trctrl)
+cat("Model Summary (Gini Index):\n")
+print(DTModel_gini)
+
+# Fit Decision Tree Classification Model (Gain Ratio)
+DTModel_gain_ratio <- train(decision ~ ., data = train.data2, method = "rpart", metric = "ROC", parms = list(split = "information"), trControl = trctrl)
+cat("Model Summary (Gain Ratio):\n")
+print(DTModel_gain_ratio)
+
+# Visualization for Gini Index
+prp(DTModel_gini$finalModel, box.palette = "orange", tweak = 1.2, varlen = 20)
+
+# Visualization for Gain Ratio
+prp(DTModel_gain_ratio$finalModel, box.palette = "yellow", tweak = 1.2, varlen = 20)
+
+# Variable Importance for Gini Index
+model_importance_gini <- varImp(DTModel_gini)
+importance_df_gini <- as.data.frame(model_importance_gini$importance)
+importance_df_gini <- cbind(variable_name = rownames(importance_df_gini), importance_df_gini)
+rownames(importance_df_gini) <- 1:nrow(importance_df_gini)
+sorted_df_gini <- importance_df_gini[order(-importance_df_gini$Overall), ]
+top_variables_gini <- head(sorted_df_gini, 8)
+
+# Plot Variable Importance (Gini)
+ggplot(top_variables_gini, aes(x = Overall, y = reorder(variable_name, Overall), fill = Overall)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradient2(low = "skyblue", high = "yellow", midpoint = 50) +
+  labs(x = "Overall Importance Score", y = "Variable", title = "Variable Importance - Gini") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+# Variable Importance for Gain Ratio
+model_importance_gain_ratio <- varImp(DTModel_gain_ratio)
+importance_df_gain_ratio <- as.data.frame(model_importance_gain_ratio$importance)
+importance_df_gain_ratio <- cbind(variable_name = rownames(importance_df_gain_ratio), importance_df_gain_ratio)
+rownames(importance_df_gain_ratio) <- 1:nrow(importance_df_gain_ratio)
+sorted_df_gain_ratio <- importance_df_gain_ratio[order(-importance_df_gain_ratio$Overall), ]
+top_variables_gain_ratio <- head(sorted_df_gain_ratio, 8)
+
+# Plot Variable Importance (Gain Ratio)
+ggplot(top_variables_gain_ratio, aes(x = Overall, y = reorder(variable_name, Overall), fill = Overall)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradient2(low = "lightpink", high = "red", midpoint = 50) +
+  labs(x = "Overall Importance Score", y = "Variable", title = "Variable Importance - Gain Ratio") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+# Confusion Matrix for Gini Index
+gini_predictions <- predict(DTModel_gini, test.data1, type = "raw")
+gini_conf_matrix <- confusionMatrix(gini_predictions, test.data1$decision)
+cat("Confusion Matrix for Gini Index:\n")
+print(gini_conf_matrix)
+
+# Confusion Matrix for Gain Ratio
+gain_ratio_predictions <- predict(DTModel_gain_ratio, test.data2, type = "raw")
+gain_ratio_conf_matrix <- confusionMatrix(gain_ratio_predictions, test.data2$decision)
+cat("Confusion Matrix for Gain Ratio:\n")
+print(gain_ratio_conf_matrix)
+
+# AUC-ROC for Gini Index
+gini_probabilities <- predict(DTModel_gini, test.data1, type = "prob")[, 2]
+roc_curve_gini <- roc(test.data1$decision, gini_probabilities)
+auc_value_gini <- auc(roc_curve_gini)
+cat("AUC for Gini Index:", auc_value_gini, "\n")
+
+plot(roc_curve_gini, main = "AUC-ROC Curve (Gini Index)", col = "blue")
+
+# AUC-ROC for Gain Ratio
+gain_ratio_probabilities <- predict(DTModel_gain_ratio, test.data2, type = "prob")[, 2]
+roc_curve_gain_ratio <- roc(test.data2$decision, gain_ratio_probabilities)
+auc_value_gain_ratio <- auc(roc_curve_gain_ratio)
+cat("AUC for Gain Ratio:", auc_value_gain_ratio, "\n")
+
+plot(roc_curve_gain_ratio, main = "AUC-ROC Curve (Gain Ratio)", col = "red")
+
+```
+
+# Random Forest
+
+```{r}
+# Load necessary libraries
+library(randomForest)
+library(caret)
+library(pROC)
+library(ggplot2)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Split the data into training (80%) and testing (20%) subsets
+split_index <- createDataPartition(recruitmentdataset$decision, p = 0.8, list = FALSE)
+train_data <- recruitmentdataset[split_index, ]
+test_data <- recruitmentdataset[-split_index, ]
+
+# Ensure the target variable is a factor with valid R variable names for levels
+train_data$decision <- factor(train_data$decision, levels = unique(train_data$decision))
+levels(train_data$decision) <- make.names(levels(train_data$decision))
+
+test_data$decision <- factor(test_data$decision, levels = unique(test_data$decision))
+levels(test_data$decision) <- make.names(levels(test_data$decision))
+
+# Perform Cross-Validation to Tune Hyperparameters
+set.seed(123)
+cv_control <- trainControl(method = "cv", number = 10, classProbs = TRUE, summaryFunction = twoClassSummary)
+
+# Tune mtry using cross-validation
+rf_cv <- train(
+  decision ~ ., 
+  data = train_data, 
+  method = "rf", 
+  metric = "ROC", 
+  tuneGrid = expand.grid(mtry = c(2, 5, 10, 13)), # Test different mtry values
+  trControl = cv_control,
+  ntree = 500
+)
+
+# Print Cross-Validation Results
+print(rf_cv)
+
+# Extract the best mtry value
+best_mtry <- rf_cv$bestTune$mtry
+cat("Best mtry value from CV:", best_mtry, "\n")
+
+# Train the Final Random Forest Model with Best mtry
+random_forest_model <- randomForest(
+  decision ~ ., 
+  data = train_data, 
+  ntree = 500, 
+  mtry = best_mtry, 
+  importance = TRUE
+)
+
+# Summary of the final model
+print(random_forest_model)
+
+# Evaluate variable importance
+varImpPlot(random_forest_model, main = "Variable Importance Plot")
+
+# Predict on the test dataset
+rf_predictions <- predict(random_forest_model, newdata = test_data, type = "response")
+
+# Confusion matrix to evaluate model performance
+rf_conf_matrix <- confusionMatrix(rf_predictions, test_data$decision)
+print(rf_conf_matrix)
+
+# Add Kappa Score
+rf_kappa_score <- rf_conf_matrix$overall['Kappa']
+cat("Kappa Score: ", rf_kappa_score, "\n")
+
+# Calculate and plot AUC-ROC
+rf_probabilities <- predict(random_forest_model, newdata = test_data, type = "prob")[, 2]
+rf_roc_curve <- roc(test_data$decision, rf_probabilities)
+rf_auc_value <- auc(rf_roc_curve)
+cat("Random Forest AUC: ", rf_auc_value, "\n")
+
+plot(rf_roc_curve, main = "AUC-ROC Curve for Random Forest", col = "darkgreen")
+
+# Save results for comparison
+rf_results <- list(
+  Model = "Random Forest",
+  Accuracy = rf_conf_matrix$overall['Accuracy'],
+  Kappa = rf_kappa_score,
+  AUC = rf_auc_value
+)
+print(rf_results)
+
+# Feature Importance Analysis
+# Extract feature importance measures
+rf_importance <- importance(random_forest_model)
+rf_importance_df <- data.frame(
+  Feature = rownames(rf_importance),
+  MeanDecreaseAccuracy = rf_importance[, "MeanDecreaseAccuracy"],
+  MeanDecreaseGini = rf_importance[, "MeanDecreaseGini"]
+)
+
+# Sort by Mean Decrease in Accuracy
+rf_importance_df <- rf_importance_df[order(-rf_importance_df$MeanDecreaseAccuracy), ]
+
+# Display top features
+cat("Top Features for Random Forest (Mean Decrease Accuracy):\n")
+print(head(rf_importance_df, 10))
+
+# Plot feature importance (Mean Decrease Accuracy - Top 10 Features)
+ggplot(rf_importance_df[1:10, ], aes(x = reorder(Feature, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
+  geom_bar(stat = "identity", fill = "forestgreen") +
+  coord_flip() +
+  ggtitle("Top 10 Feature Importance - Random Forests") +
+  xlab("Features") +
+  ylab("Mean Decrease Accuracy")
+
+```
+
+# XGboost
+
+```{r}
+# Load necessary libraries
+library(xgboost)
+library(caret)
+library(pROC)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Split the data into training (80%) and testing (20%) subsets
+split_index <- createDataPartition(recruitmentdataset$decision, p = 0.8, list = FALSE)
+train_data <- recruitmentdataset[split_index, ]
+test_data <- recruitmentdataset[-split_index, ]
+
+# Convert the target variable to binary (0/1)
+train_data$decision <- as.numeric(as.factor(train_data$decision)) - 1
+test_data$decision <- as.numeric(as.factor(test_data$decision)) - 1
+
+# One-hot encode categorical variables
+train_matrix <- model.matrix(decision ~ . - 1, data = train_data)
+test_matrix <- model.matrix(decision ~ . - 1, data = test_data)
+
+# Prepare DMatrix for XGBoost
+dtrain <- xgb.DMatrix(data = train_matrix, label = train_data$decision)
+dtest <- xgb.DMatrix(data = test_matrix, label = test_data$decision)
+
+# Perform Cross-Validation
+cv_results <- xgb.cv(
+  data = dtrain,
+  nrounds = 100,               # Number of boosting rounds
+  nfold = 10,                  # 10-fold cross-validation
+  objective = "binary:logistic",
+  eval_metric = "auc",
+  verbose = 0,                 # Suppress training output
+  early_stopping_rounds = 10,  # Stop if no improvement after 10 rounds
+  print_every_n = 10           # Print every 10 iterations
+)
+
+# Extract and print the best iteration
+best_iteration <- cv_results$best_iteration
+cat("Best number of boosting rounds (best iteration):", best_iteration, "\n")
+
+# Train an XGBoost model with default parameters
+xgb_model <- xgboost(
+  data = dtrain,
+  objective = "binary:logistic",
+  eval_metric = "auc",
+  nrounds = cv_results$best_iteration, # Use the best number of iterations from CV
+  verbose = 0                          # Suppress training output
+)
+
+# Predict on the test dataset
+xgb_probabilities <- predict(xgb_model, newdata = dtest)
+
+# Convert probabilities to class labels (using a threshold of 0.5)
+xgb_predictions <- ifelse(xgb_probabilities > 0.5, 1, 0)
+
+# Confusion matrix to evaluate model performance
+xgb_conf_matrix <- confusionMatrix(as.factor(xgb_predictions), as.factor(test_data$decision))
+print(xgb_conf_matrix)
+
+# Calculate and plot AUC-ROC
+xgb_roc_curve <- roc(test_data$decision, xgb_probabilities)
+xgb_auc_value <- auc(xgb_roc_curve)
+cat("XGBoost AUC: ", xgb_auc_value, "\n")
+
+plot(xgb_roc_curve, main = "AUC-ROC Curve for XGBoost", col = "red")
+
+# Feature Importance
+importance <- xgb.importance(model = xgb_model)
+cat("Feature Importance:\n")
+print(importance)
+
+# Plot Feature Importance (Top 10 Features)
+xgb.plot.importance(importance, top_n = 10, main = "Top 10 Feature Importance")
+
+```
+
